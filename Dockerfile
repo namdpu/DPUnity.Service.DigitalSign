@@ -9,7 +9,6 @@ ARG GIT_USER
 # Copy csproj files separately for better caching
 COPY DigitalSignService/DigitalSignService.csproj DigitalSignService/
 COPY DigitalSignService.Business/DigitalSignService.Business.csproj DigitalSignService.Business/
-COPY DigitalSignService.Business/Lib/ DigitalSignService.Business/Lib/
 COPY DigitalSignService.Common/DigitalSignService.Common.csproj DigitalSignService.Common/
 COPY DigitalSignService.DAL/DigitalSignService.DAL.csproj DigitalSignService.DAL/
 
@@ -34,6 +33,7 @@ RUN dotnet restore DigitalSignService.csproj
 
 # Copy full source and build
 COPY . .
+COPY DigitalSignService.Business/Lib/ DigitalSignService.Business/Lib/
 
 # Publish the main service project
 RUN dotnet publish DigitalSignService.csproj -c Release -o /app/publish /p:UseAppHost=false
