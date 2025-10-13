@@ -3,7 +3,7 @@ name: Build and Deploy to VPS
 on:
   push:
     branches:
-      - prod
+      - cicd_dev
   workflow_dispatch:
 
 env:
