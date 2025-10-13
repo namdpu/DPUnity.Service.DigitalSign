@@ -1,0 +1,360 @@
+﻿using DigitalSignService.Business.IServices;
+using DigitalSignService.Business.IServices.Sign;
+using DigitalSignService.Common;
+using DigitalSignService.DAL.DTOs.Requests;
+using DigitalSignService.DAL.DTOs.Requests.Sign;
+using DigitalSignService.DAL.DTOs.Responses;
+using DigitalSignService.DAL.Entities;
+using DigitalSignService.DAL.IRepository;
+using DigitalSignService.DAL.Models;
+using Mapster;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+
+namespace DigitalSignService.Business.Services
+{
+    public class TemplateService : BaseService<Template>, ITemplateService
+    {
+        private readonly ITemplateRepository _rp;
+        private readonly AppSetting _appSetting;
+        private readonly IUserContext _userContext;
+        private readonly ISigningProviderFactory _signingProviderFactory;
+        private readonly IHistorySignRepository _historySignRP;
+        public TemplateService(
+            ITemplateRepository rp,
+            IOptions<AppSetting> options,
+            ILogger<TemplateService> logger,
+            IUserContext userContext,
+            ISigningProviderFactory signingProviderFactory,
+            IHistorySignRepository historySignRP) : base(rp, logger)
+        {
+            this._rp = rp;
+            _appSetting = options.Value;
+            _userContext = userContext;
+            _signingProviderFactory = signingProviderFactory;
+            _historySignRP = historySignRP;
+        }
+
+        /// <summary>
+        /// Sign file pdf, currently does not support sign multiple users with priority
+        /// </summary>
+        /// <param name="req"></param>
+        /// <param name="appId"></param>
+        /// <returns></returns>
+        public async Task<BaseResponse> Sign(SignReq req, string providerSign, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (Path.GetExtension(req.DocumentInfo.Name).ToLower() != ".pdf")
+                    return BadRequestResponse("Only support pdf file");
+
+                if (req.TemplateId.HasValue)
+                {
+                    var existingTemplate = await _rp.FindWithIncludesAsync(t => t.Id == req.TemplateId.Value && t.IsActive && !t.IsDeleted,
+                            query => query.Include(t => t.TemplatePapers));
+                    if (existingTemplate is null)
+                        return NotFoundResponse($"Cannot find template with id {req.TemplateId}");
+                }
+
+                var entity = new HistorySign
+                {
+                    DocumentUrl = req.DocumentInfo.Url,
+                    DocumentId = req.DocumentInfo.Id,
+                    DocumentName = req.DocumentInfo.Name,
+                    UserId = req.UserSign.Id,
+                    Img = req.UserSign.Img,
+                    Reason = req.UserSign.Reason,
+                    SerialNumber = req.UserSign.SerialNumber,
+                    UserSignPositions = req.UserSign.UserSignPositions,
+                    SigningStatus = Enums.SigningStatus.InQueue,
+                    TemplateId = req.TemplateId,
+                    Provider = providerSign
+                };
+
+                await _historySignRP.Insert(entity);
+                await _historySignRP.Save();
+                // Need to check if handle in global
+                var _signingProvider = _signingProviderFactory.GetProvider(providerSign);
+                var transactionId = await _signingProvider.SignCAPDF(req, cancellationToken);
+                if (String.IsNullOrEmpty(transactionId))
+                {
+                    entity.SigningStatus = Enums.SigningStatus.SignFailed;
+                    await _historySignRP.Update(entity);
+                    await _historySignRP.Save();
+                    return BadRequestResponse("Cannot create transaction to sign document");
+                }
+                entity.TransactionId = transactionId;
+                entity.SigningStatus = Enums.SigningStatus.WaitingForUserConfirmation;
+
+                await _historySignRP.Update(entity);
+                await _historySignRP.Save();
+
+                return SuccessResponse(entity.Id, "Sign pdf successfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error when sign");
+                return CatchErrorResponse(ex);
+            }
+        }
+
+        public async Task<BaseResponse> GetSignStatus(string transactionId, string providerSign, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var existingHistorySign = await _historySignRP.GetActiveById(Guid.Parse(transactionId));
+                if (existingHistorySign is null)
+                    return NotFoundResponse($"Cannot find history sign with transaction {transactionId}");
+                if (String.IsNullOrEmpty(existingHistorySign.TransactionId))
+                    return BadRequestResponse($"File was not sign");
+
+                SignReq signReq = new SignReq
+                {
+                    DocumentInfo = new DocumentInfo
+                    {
+                        Id = existingHistorySign.DocumentId,
+                        Name = existingHistorySign.DocumentName,
+                        Url = existingHistorySign.DocumentUrl
+                    },
+                    UserSign = new UserSignReq
+                    {
+                        Id = existingHistorySign.UserId,
+                        Img = existingHistorySign.Img,
+                        Reason = existingHistorySign.Reason,
+                        SerialNumber = existingHistorySign.SerialNumber,
+                        UserSignPositions = existingHistorySign.UserSignPositions
+                    }
+                };
+                var _signingProvider = _signingProviderFactory.GetProvider(providerSign);
+                var statusRes = await _signingProvider.GetSignStatus(signReq, existingHistorySign.TransactionId, cancellationToken);
+                
+                existingHistorySign.SigningStatus = statusRes.SigningStatus;
+                existingHistorySign.DocumentSignedUrl = statusRes.DocumentUrl;
+
+                await _historySignRP.Update(existingHistorySign);
+                await _historySignRP.Save();
+
+                return SuccessResponse(statusRes, "Get sign status successfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error when GetSignStatus");
+                return CatchErrorResponse(ex);
+            }
+        }
+
+        public async Task<BaseResponse> CreateTemplate(CreateTemplateRequest request)
+        {
+            try
+            {
+                var existNameTemplate = await _rp.Queryable().AnyAsync(x => x.Name == request.Name && x.CreatedUserId == _rp.UserInfo.Id);
+                if (existNameTemplate)
+                {
+                    return BadRequestResponse("Exist name template");
+                }
+                var template = new Template
+                {
+                    Name = request.Name,
+                    TemplatePapers = request.TemplatePapers.Select(p => new DigitalSignService.DAL.Entities.TemplatePaper
+                    {
+                        PaperSizeId = p.PaperId,
+                        TemplatePaperUserSigns = p.TemplateUserSigns.Select(u => new DigitalSignService.DAL.Entities.TemplatePaperUserSign
+                        {
+                            UserSignId = u.UserSignId,
+                            Img = u.Img,
+                            Priority = u.Priority,
+                            UserSignPositions = u.UserSignPos.Select(pos => new UserSignPos
+                            {
+                                CoorX = pos.CoorX,
+                                CoorY = pos.CoorY,
+                                Width = pos.Width,
+                                Height = pos.Height,
+                                StartPage = pos.StartPage,
+                                EndPage = pos.EndPage
+                            }).ToArray()
+                        }).ToList()
+                    }).ToList()
+                };
+                await _rp.Insert(template);
+                await _rp.Save();
+
+                var entity = await this._GetTemplateById(template.Id);
+
+                return SuccessResponse(entity.Adapt<TemplateDTO>(), "Create template succesfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, ex.Message);
+                return CatchErrorResponse(ex);
+            }
+        }
+
+        public async Task<BaseResponse> GetAllTemplate()
+        {
+            try
+            {
+                var templates = await _rp.Queryable()
+                    .Where(x => x.IsActive && !x.IsDeleted
+                        && x.CreatedUserId == this._rp.UserInfo.Id)
+                    .ToListAsync();
+                var result = templates.Adapt<List<TemplateDTO>>();
+                return SuccessResponse(result, "Get all template succesfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, ex.Message);
+                return CatchErrorResponse(ex);
+            }
+        }
+
+        public async Task<BaseResponse> GetTemplateById(Guid id)
+        {
+            try
+            {
+                var template = await this._GetTemplateById(id);
+                if (template == null)
+                    return NotFoundResponse("Template not found");
+
+                return SuccessResponse(template.Adapt<TemplateDTO>(), "Get template succesfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, ex.Message);
+                return CatchErrorResponse(ex);
+            }
+        }
+
+        public async Task<BaseResponse> UpdateTemplate(UpdateTemplateRequest request)
+        {
+            try
+            {
+                var existTemplate = await _rp.Queryable()
+                    .Include(t => t.TemplatePapers)
+                        .ThenInclude(tp => tp.PaperSize)
+                    .Include(t => t.TemplatePapers)
+                        .ThenInclude(tpu => tpu.TemplatePaperUserSigns)
+                    .FirstOrDefaultAsync(x => x.Id == request.Id && x.CreatedUserId == _rp.UserInfo.Id);
+                if (existTemplate == null)
+                {
+                    return BadRequestResponse("Template does not exist");
+                }
+
+                var existName = await _rp.Queryable().AnyAsync(x => x.Name == request.Name && x.Id != request.Id);
+                if (existName)
+                {
+                    return BadRequestResponse("Name template exist");
+                }
+
+                var updateTemplatePapers = request.TemplatePapers.Select(p => new DigitalSignService.DAL.Entities.TemplatePaper
+                {
+                    PaperSizeId = p.PaperId,
+                    TemplatePaperUserSigns = p.TemplateUserSigns.Select(u => new DigitalSignService.DAL.Entities.TemplatePaperUserSign
+                    {
+                        UserSignId = u.UserSignId,
+                        Img = u.Img,
+                        Priority = u.Priority,
+                        UserSignPositions = u.UserSignPos.Select(pos => new UserSignPos
+                        {
+                            CoorX = pos.CoorX,
+                            CoorY = pos.CoorY,
+                            Width = pos.Width,
+                            Height = pos.Height,
+                            StartPage = pos.StartPage,
+                            EndPage = pos.EndPage
+                        }).ToArray()
+                    }).ToList()
+                }).ToList();
+                existTemplate.Name = request.Name;
+                existTemplate.TemplatePapers = updateTemplatePapers;
+
+                await _rp.Update(existTemplate);
+                await _rp.Save();
+
+                var entity = await this._GetTemplateById(existTemplate.Id);
+
+                return SuccessResponse(entity.Adapt<TemplateDTO>(), "Update template succesfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, ex.Message);
+                return CatchErrorResponse(ex);
+            }
+        }
+
+        public async Task<BaseResponse> GetFileSigned(string transactionId, string providerSign, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var existingHistorySign = await _historySignRP.GetActiveById(Guid.Parse(transactionId));
+                if (existingHistorySign is null)
+                    return NotFoundResponse($"Cannot find history sign with transaction {transactionId}");
+
+                if (String.IsNullOrEmpty(existingHistorySign.DocumentSignedUrl))
+                    return BadRequestResponse($"File was not sign");
+
+                return SuccessResponse(existingHistorySign.DocumentSignedUrl, "Get file sign successfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error when GetFileSigned");
+                return CatchErrorResponse(ex);
+            }
+        }
+
+        public async Task HandleWebhook(string providerSign, string dataString, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                string transactionId = string.Empty;
+                var _signingProvider = _signingProviderFactory.GetProvider(providerSign);
+                switch (providerSign)
+                {
+                    case "viettel":
+                        var data = JsonConvert.DeserializeObject<VTWebhookData>(dataString);
+                        if (data is null)
+                            return;
+                        transactionId = data.MetaData.TransactionId;
+                        break;
+                    default:
+                        break;
+                }
+                var existingHistorySign = await _historySignRP.Queryable()
+                    .FirstOrDefaultAsync(hs => hs.TransactionId == transactionId && hs.SigningStatus == Enums.SigningStatus.WaitingForUserConfirmation);
+                if (existingHistorySign is null)
+                {
+                    logger.LogWarning("No history sign found for transaction: {transactionId}", transactionId);
+                    return;
+                }
+
+                var statusRes = await _signingProvider.HandleWebhook(dataString, existingHistorySign.DocumentName, cancellationToken);
+                existingHistorySign.SigningStatus = statusRes.SigningStatus;
+                existingHistorySign.DocumentSignedUrl = statusRes.DocumentUrl;
+
+                await _historySignRP.UpdateWithoutTracking(existingHistorySign);
+                await _historySignRP.Save();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Error when HandleWebhook of provider {providerSign}");
+            }
+        }
+
+        private async Task<Template?> _GetTemplateById(Guid id)
+        {
+            try
+            {
+                return await _rp.FindWithIncludesAsync(t => t.Id == id && t.IsActive && !t.IsDeleted && t.CreatedUserId == this._rp.UserInfo.Id,
+                    query => query.Include(tp => tp.TemplatePapers)
+                        .ThenInclude(pp => pp.PaperSize)
+                        .Include(tp => tp.TemplatePapers)
+                        .ThenInclude(tpu => tpu.TemplatePaperUserSigns));
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+    }
+}

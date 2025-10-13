@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DigitalSignService", "DigitalSignService\DigitalSignService.csproj", "{932A4E14-9CC9-4896-810D-773A51047ECC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DigitalSignService.DAL", "DigitalSignService.DAL\DigitalSignService.DAL.csproj", "{63446A84-47B2-41BA-8C24-7CF8AF1CB3CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DigitalSignService.Business", "DigitalSignService.Business\DigitalSignService.Business.csproj", "{5333C68D-B3D7-4BFD-A597-482B441F5E64}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DigitalSignService.Common", "DigitalSignService.Common\DigitalSignService.Common.csproj", "{FFC64909-1C57-4A49-9AD2-69CF9138D54A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{932A4E14-9CC9-4896-810D-773A51047ECC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{932A4E14-9CC9-4896-810D-773A51047ECC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{932A4E14-9CC9-4896-810D-773A51047ECC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{932A4E14-9CC9-4896-810D-773A51047ECC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63446A84-47B2-41BA-8C24-7CF8AF1CB3CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63446A84-47B2-41BA-8C24-7CF8AF1CB3CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63446A84-47B2-41BA-8C24-7CF8AF1CB3CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63446A84-47B2-41BA-8C24-7CF8AF1CB3CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5333C68D-B3D7-4BFD-A597-482B441F5E64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5333C68D-B3D7-4BFD-A597-482B441F5E64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5333C68D-B3D7-4BFD-A597-482B441F5E64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5333C68D-B3D7-4BFD-A597-482B441F5E64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFC64909-1C57-4A49-9AD2-69CF9138D54A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFC64909-1C57-4A49-9AD2-69CF9138D54A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFC64909-1C57-4A49-9AD2-69CF9138D54A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFC64909-1C57-4A49-9AD2-69CF9138D54A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7F3DD1B6-40A6-43B0-BE07-71CAB34B5C49}
+	EndGlobalSection
+EndGlobal

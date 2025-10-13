@@ -1,0 +1,33 @@
+@DigitalSignService_HostAddress = http://localhost:5171
+
+GET {{DigitalSignService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+# Get all paper sizes
+GET {{DigitalSignService_HostAddress}}/api/DigitalSign/GetAllPaperSize
+Accept: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+###
+
+# Create custom paper size
+POST {{DigitalSignService_HostAddress}}/api/DigitalSign/CustomPageSize
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "pageName": "Custom A1",
+  "width": 594,
+  "height": 841,
+  "paperSizeType": -1
+}
+
+###
+
+# Delete paper size
+DELETE {{DigitalSignService_HostAddress}}/api/DigitalSign/DeletePaperSize?id=PAPER_SIZE_ID_HERE
+Authorization: Bearer YOUR_TOKEN_HERE
+
+###
