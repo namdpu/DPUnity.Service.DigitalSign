@@ -9,6 +9,7 @@ ARG GIT_USER
 # Copy csproj files separately for better caching
 COPY DigitalSignService/DigitalSignService.csproj DigitalSignService/
 COPY DigitalSignService.Business/DigitalSignService.Business.csproj DigitalSignService.Business/
+COPY DigitalSignService.Business/Lib/ DigitalSignService.Business/Lib/
 COPY DigitalSignService.Common/DigitalSignService.Common.csproj DigitalSignService.Common/
 COPY DigitalSignService.DAL/DigitalSignService.DAL.csproj DigitalSignService.DAL/
 
