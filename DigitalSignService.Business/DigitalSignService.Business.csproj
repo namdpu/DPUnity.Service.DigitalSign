@@ -20,12 +20,13 @@
 
 	<ItemGroup>
 		<Reference Include="SignService.Common.HashSignature">
-			<HintPath>Lib\SignService.Common.HashSignature.dll</HintPath>
+			<HintPath>$(MSBuildProjectDirectory)\Lib\SignService.Common.HashSignature.dll</HintPath>
+			<Private>true</Private>
 		</Reference>
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="Lib\**" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="Lib\**" CopyToOutputDirectory="Always" />
 	</ItemGroup>
 
 </Project>
