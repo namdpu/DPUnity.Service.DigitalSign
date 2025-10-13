@@ -13,6 +13,9 @@ COPY DigitalSignService.Business/Lib/ DigitalSignService.Business/Lib/
 COPY DigitalSignService.Common/DigitalSignService.Common.csproj DigitalSignService.Common/
 COPY DigitalSignService.DAL/DigitalSignService.DAL.csproj DigitalSignService.DAL/
 
+RUN ls -R /src/DigitalSignService.Business/Lib
+
+
 # Configure GitHub Packages NuGet source if token provided
 RUN if [ ! -z "$GIT_TOKEN" ] && [ ! -z "$GIT_USER" ]; then \
     dotnet nuget add source "https://nuget.pkg.github.com/$GIT_USER/index.json" \
