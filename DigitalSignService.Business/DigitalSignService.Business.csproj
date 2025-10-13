@@ -20,7 +20,7 @@
 
 	<ItemGroup>
 		<Reference Include="SignService.Common.HashSignature">
-			<HintPath>$(MSBuildProjectDirectory)\Lib\SignService.Common.HashSignature.dll</HintPath>
+			<HintPath>$(MSBuildProjectDirectory)$(DirectorySeparatorChar)Lib$(DirectorySeparatorChar)SignService.Common.HashSignature.dll</HintPath>
 			<Private>true</Private>
 		</Reference>
 	</ItemGroup>
