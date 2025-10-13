@@ -26,9 +26,6 @@ RUN if [ ! -z "$GIT_TOKEN" ] && [ ! -z "$GIT_USER" ]; then \
 COPY DigitalSignService/appsettings.Production.json ./DigitalSignService/
 
 # Restore dependencies
-WORKDIR /src/DigitalSignService.Business
-RUN dotnet build -c Release
-
 WORKDIR /src/DigitalSignService
 RUN dotnet restore DigitalSignService.csproj
 
@@ -36,7 +33,12 @@ RUN dotnet restore DigitalSignService.csproj
 COPY . .
 COPY DigitalSignService.Business/Lib/ DigitalSignService.Business/Lib/
 
+# Build the Business project
+WORKDIR /src/DigitalSignService.Business
+RUN dotnet build -c Release
+
 # Publish the main service project
+WORKDIR /src/DigitalSignService
 RUN dotnet publish DigitalSignService.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime
