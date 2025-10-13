@@ -1,0 +1,66 @@
+name: Build and Deploy to VPS
+
+on:
+  push:
+    branches:
+      - prod
+  workflow_dispatch:
+
+env:
+  APP_NAME: dpu_digital_sign_be
+  DOCKER_IMAGE: dpu_digital_sign_be
+  CONTAINER_NAME: dpu_digital_sign_be-con
+  IMAGE_NAME: ${{ github.repository_owner }}/dpu_digital_sign_be
+  REGISTRY: ghcr.io
+  APP_PORT: 8004
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GIT_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          GIT_TOKEN=${{ secrets.GIT_TOKEN }}
+          GIT_USER=${{ github.repository_owner }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy via SSH and run container
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST_DEV }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          IMAGE_NAME=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "${{ secrets.GIT_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          # Create shared network if not exists
+          docker network create db_postgres_network || true
+          docker pull $IMAGE_NAME
+          docker stop ${{ env.CONTAINER_NAME }} || true
+          docker rm ${{ env.CONTAINER_NAME }} || true
+          docker run -d --name ${{ env.CONTAINER_NAME }} --network db_postgres_network --restart=unless-stopped -p ${{ env.APP_PORT }}:8080 $IMAGE_NAME
