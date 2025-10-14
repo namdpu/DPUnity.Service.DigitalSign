@@ -142,6 +142,7 @@ builder.Services.AddTransient<IApiStorage, ApiStorage>();
 builder.Services.AddTransient<IJWTContext, JWTContext>();
 builder.Services.AddSingleton<RedisService>();
 builder.Services.AddHostedService<WebhookService>();
+builder.Services.AddScoped<FileApi>();
 
 // Register provider factory
 builder.Services.AddSingleton<ISigningProviderFactory, SigningProviderFactory>();

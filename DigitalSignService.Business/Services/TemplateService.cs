@@ -1,5 +1,6 @@
 ﻿using DigitalSignService.Business.IServices;
 using DigitalSignService.Business.IServices.Sign;
+using DigitalSignService.Business.Service3th;
 using DigitalSignService.Common;
 using DigitalSignService.DAL.DTOs.Requests;
 using DigitalSignService.DAL.DTOs.Requests.Sign;
@@ -22,19 +23,25 @@ namespace DigitalSignService.Business.Services
         private readonly IUserContext _userContext;
         private readonly ISigningProviderFactory _signingProviderFactory;
         private readonly IHistorySignRepository _historySignRP;
+        private readonly FileApi _fileApi;
+        private readonly CachingService _cachingService;
         public TemplateService(
             ITemplateRepository rp,
             IOptions<AppSetting> options,
             ILogger<TemplateService> logger,
             IUserContext userContext,
             ISigningProviderFactory signingProviderFactory,
-            IHistorySignRepository historySignRP) : base(rp, logger)
+            IHistorySignRepository historySignRP,
+            FileApi fileApi,
+            CachingService cachingService) : base(rp, logger)
         {
             this._rp = rp;
             _appSetting = options.Value;
             _userContext = userContext;
             _signingProviderFactory = signingProviderFactory;
             _historySignRP = historySignRP;
+            _fileApi = fileApi;
+            _cachingService = cachingService;
         }
 
         /// <summary>
@@ -49,6 +56,21 @@ namespace DigitalSignService.Business.Services
             {
                 if (Path.GetExtension(req.DocumentInfo.Name).ToLower() != ".pdf")
                     return BadRequestResponse("Only support pdf file");
+
+                var fileSize = await _fileApi.GetFileSizeAsync(req.DocumentInfo.Url);
+                if (fileSize == -1)
+                {
+                    logger.LogError("Cannot get file size from document URL (use method HEAD to get file size): {DocumentUrl}", req.DocumentInfo.Url);
+                    return BadRequestResponse("Cannot retrieve file information. Please check the document URL (use method HEAD to get file size).");
+                }
+
+                if (!_cachingService.CanAddToCache(fileSize, _appSetting.MaxStorageSigner))
+                {
+                    var currentCacheSize = _cachingService.GetAllSignerCacheSize();
+                    logger.LogWarning("Cannot process document due to cache storage limit. File size: {FileSize}, Current cache: {CurrentCache}, Max allowed: {MaxStorage}", 
+                        fileSize, currentCacheSize, _appSetting.MaxStorageSigner);
+                    return BadRequestResponse($"Cannot process document due to storage limit. File size: {fileSize / (1024 * 1024):F2}MB. Server can handle file with size {(_appSetting.MaxStorageSigner - currentCacheSize) / (1024 * 1024):F2}MB currently.");
+                }
 
                 if (req.TemplateId.HasValue)
                 {

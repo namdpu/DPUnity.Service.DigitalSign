@@ -56,5 +56,11 @@ namespace DigitalSignService.Business.Services
             }
             return totalSize;
         }
+
+        public bool CanAddToCache(long newFileSize, long maxStorageSize)
+        {
+            long currentCacheSize = GetAllSignerCacheSize();
+            return (currentCacheSize + newFileSize) <= maxStorageSize;
+        }
     }
 }

@@ -201,6 +201,7 @@ namespace DigitalSignService.Business.Services.Sign
             }
 
             // Lưu Signer vào cache để dùng khi get status
+            // Note: Cache capacity validation is already handled at TemplateService level
             _cachingService.SetCacheSigner(transactionId, signer, credentialId, file.LongLength);
 
             return transactionId;

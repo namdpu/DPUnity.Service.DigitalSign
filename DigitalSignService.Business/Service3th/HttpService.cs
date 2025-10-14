@@ -5,13 +5,13 @@ using System.Text;
 
 namespace DigitalSignService.Business.Service3th
 {
-    public abstract class HttpService
+    public class HttpService
     {
         protected readonly IHttpContextAccessor _httpContextAccessor;
         protected readonly ILogger _logger;
         protected readonly string _baseEndpoint;
 
-        protected HttpService(IHttpContextAccessor httpContextAccessor, ILogger logger, string baseEndpoint)
+        public HttpService(IHttpContextAccessor httpContextAccessor, ILogger logger, string baseEndpoint)
         {
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
@@ -73,6 +73,22 @@ namespace DigitalSignService.Business.Service3th
             {
                 _logger.LogError(ex, $"Error when calling GET {url}");
                 return default;
+            }
+        }
+
+        protected async Task<HttpResponseMessage?> HeadAsync(string url, string? token = null, Dictionary<string, string>? customHeaders = null)
+        {
+            try
+            {
+                using var client = CreateHttpClient(token, customHeaders);
+                var request = new HttpRequestMessage(HttpMethod.Head, $"{_baseEndpoint}/{url}");
+                var response = await client.SendAsync(request);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error when calling HEAD {url}");
+                return null;
             }
         }
     }
