@@ -32,7 +32,7 @@ namespace DigitalSignService.Business.Services.Sign
 
         public override async Task<string> SignCAPDF(SignReq req, CancellationToken cancellationToken = default)
         {
-            var fileByteArr = await this.DownloadFileAsync(req.DocumentInfo.Url);
+            var fileByteArr = await this.DownloadFileAsync(req.DocumentInfo.Url, 200);
             if (fileByteArr == null)
             {
                 return string.Empty;
