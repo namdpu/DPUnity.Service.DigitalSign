@@ -273,7 +273,7 @@ namespace DigitalSignService.Business.Services.Sign
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Stream containing file content</returns>
         protected async Task<byte[]?> DownloadFileAsync(string url, int maxConcurrentDownloads = 5,
-            long partSizeBytes = 1024 * 1024, CancellationToken cancellationToken = default)
+            long partSizeBytes = 5 * 1024 * 1024, CancellationToken cancellationToken = default)
         {
             var stream = await DownloadFile(url, maxConcurrentDownloads, partSizeBytes, cancellationToken);
             if (stream == null) return null;

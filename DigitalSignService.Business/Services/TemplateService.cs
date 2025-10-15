@@ -428,7 +428,7 @@ namespace DigitalSignService.Business.Services
                     return BadRequestResponse("Cannot delete template because it is being used for sign history");
                 }
 
-                await _rp.SoftDelete(existTemplate.Id);
+                await _rp.Delete(existTemplate.Id);
                 await _rp.Save();
 
                 return SuccessResponse("Delete template succesfully");
