@@ -5,24 +5,24 @@ using System.Text;
 
 namespace DigitalSignService.Business.Service3th
 {
-    public abstract class HttpService
+    public class HttpService
     {
         protected readonly IHttpContextAccessor _httpContextAccessor;
         protected readonly ILogger _logger;
         protected readonly string _baseEndpoint;
 
-        protected HttpService(IHttpContextAccessor httpContextAccessor, ILogger logger, string baseEndpoint)
+        public HttpService(IHttpContextAccessor httpContextAccessor, ILogger<HttpService> logger, string baseEndpoint)
         {
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
             _baseEndpoint = baseEndpoint;
         }
 
-        protected HttpClient CreateHttpClient(string? token = null, Dictionary<string, string>? customHeaders = null)
+        protected HttpClient CreateHttpClient(string? token = null, Dictionary<string, string>? customHeaders = null, bool addToken = true)
         {
             var client = new HttpClient();
             var accessToken = token ?? _httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-            if (!string.IsNullOrEmpty(accessToken))
+            if (!string.IsNullOrEmpty(accessToken) && addToken)
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
 
             if (customHeaders != null)
@@ -40,7 +40,7 @@ namespace DigitalSignService.Business.Service3th
                 using var client = CreateHttpClient(token, customHeaders);
                 var content = new StringContent(JsonConvert.SerializeObject(data), Encoding.UTF8, "application/json");
                 var response = await client.PostAsync($"{_baseEndpoint}/{url}", content);
-                if(typeof(T).IsAssignableFrom(response.GetType()))
+                if (typeof(T).IsAssignableFrom(response.GetType()))
                     return (T)(object)response;
 
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -73,6 +73,22 @@ namespace DigitalSignService.Business.Service3th
             {
                 _logger.LogError(ex, $"Error when calling GET {url}");
                 return default;
+            }
+        }
+
+        protected async Task<HttpResponseMessage?> HeadAsync(string url, string? token = null, Dictionary<string, string>? customHeaders = null, bool addToken = true)
+        {
+            try
+            {
+                using var client = CreateHttpClient(token, customHeaders, addToken);
+                var request = new HttpRequestMessage(HttpMethod.Head, $"{(String.IsNullOrEmpty(_baseEndpoint) ? url : $"{_baseEndpoint}/{url}")}");
+                var response = await client.SendAsync(request);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error when calling HEAD {url}");
+                return null;
             }
         }
     }

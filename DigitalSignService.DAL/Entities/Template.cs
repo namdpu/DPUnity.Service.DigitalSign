@@ -22,5 +22,6 @@ namespace DigitalSignService.DAL.Entities
         public string Name { get; set; }
 
         public virtual ICollection<TemplatePaper> TemplatePapers { get; set; }
+        public virtual ICollection<HistorySign>? HistorySigns { get; set; }
     }
 }

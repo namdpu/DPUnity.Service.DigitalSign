@@ -41,6 +41,13 @@ namespace DigitalSignService.DAL.Entities
         public string Img { get; set; }
 
         /// <summary>
+        /// Rotate sign image
+        /// </summary>
+        [DataMember]
+        [Column("rotate")]
+        public int? Rotate { get; set; }
+
+        /// <summary>
         /// User Sign Positions
         /// </summary>
         [DataMember]

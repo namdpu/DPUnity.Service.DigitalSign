@@ -67,5 +67,10 @@ namespace DigitalSignService.Controllers
         [HttpGet]
         public async Task<BaseResponse> GetFileSigned(string transactionId, CancellationToken cancellationToken)
             => await _templateService.GetFileSigned(transactionId, _providerSign, cancellationToken);
+
+        [SwaggerOperation("Delete Template")]
+        [HttpDelete]
+        public async Task<BaseResponse> DeleteTemplate(Guid id)
+            => await _templateService.DeleteTemplate(id);
     }
 }

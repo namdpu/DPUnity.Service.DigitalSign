@@ -201,6 +201,7 @@ namespace DigitalSignService.Business.Services.Sign
             }
 
             // Lưu Signer vào cache để dùng khi get status
+            // Note: Cache capacity validation is already handled at TemplateService level
             _cachingService.SetCacheSigner(transactionId, signer, credentialId, file.LongLength);
 
             return transactionId;
@@ -236,6 +237,12 @@ namespace DigitalSignService.Business.Services.Sign
             var imgStream = await this.DownloadFileAsync(req.Img);
             if (imgStream is null)
                 throw new Exception("Cannot download signature image");
+
+            if (req.Rotate.HasValue)
+            {
+                imgStream = RotateImage(imgStream, req.Rotate.Value);
+            }
+
             ((PdfHashSigner)signer).SetCustomImage(imgStream);
 
             foreach (var item in req.UserSignPositions)

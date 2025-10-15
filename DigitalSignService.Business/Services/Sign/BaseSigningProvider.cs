@@ -5,6 +5,9 @@ using DigitalSignService.DAL.Models;
 using DPUStorageService.APIs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Processing;
+using System.Runtime.InteropServices;
 
 namespace DigitalSignService.Business.Services.Sign
 {
@@ -293,6 +296,51 @@ namespace DigitalSignService.Business.Services.Sign
         public virtual Task<SignStatusDTO> HandleWebhook(string dataString, string documentName, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
+        }
+
+        protected byte[] RotateImage(byte[] imageBytes, int rotate)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // ---- WINDOWS VERSION (System.Drawing) ----
+                var rotateType = System.Drawing.RotateFlipType.RotateNoneFlipNone;
+                switch (rotate)
+                {
+                    case 90:
+                        rotateType = System.Drawing.RotateFlipType.Rotate90FlipNone;
+                        break;
+                    case 180:
+                        rotateType = System.Drawing.RotateFlipType.Rotate180FlipNone;
+                        break;
+                    case 270:
+                        rotateType = System.Drawing.RotateFlipType.Rotate270FlipNone;
+                        break;
+                }
+
+                using (var ms = new MemoryStream(imageBytes))
+                using (var image = System.Drawing.Image.FromStream(ms))
+                {
+                    image.RotateFlip(rotateType);
+
+                    using (var output = new MemoryStream())
+                    {
+                        image.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+                        return output.ToArray();
+                    }
+                }
+            }
+            else
+            {
+                // ---- NON-WINDOWS VERSION (ImageSharp) ----
+                using var ms = new MemoryStream(imageBytes);
+                using var image = SixLabors.ImageSharp.Image.Load(ms);
+
+                image.Mutate(x => x.Rotate((float)rotate));
+
+                using var output = new MemoryStream();
+                image.Save(output, new PngEncoder());
+                return output.ToArray();
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ namespace DigitalSignService.DAL.DTOs.Responses
     public class TemplatePaperDTO
     {
         public Guid Id { get; set; }
+        public string TemplateUrl { get; set; }
         public PaperSizeDTO PaperSize { get; set; }
         public List<TemplateUserSignPosDTO> TemplatePaperUserSigns { get; set; }
     }
@@ -20,6 +21,7 @@ namespace DigitalSignService.DAL.DTOs.Responses
         public string UserSignId { get; set; }
         public int Priority { get; set; }
         public string Img { get; set; }
+        public int? Rotate { get; set; }
         public List<UserSignPos> UserSignPositions { get; set; }
     }
 }

@@ -6,5 +6,6 @@
         public string BucketDigitalSign { get; set; }
         public string PublisherId { get; set; }
         public string WebHookApiKey { get; set; }
+        public long MaxStorageSigner { get; set; }
     }
 }

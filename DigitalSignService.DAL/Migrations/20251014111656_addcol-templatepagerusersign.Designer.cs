@@ -3,6 +3,7 @@ using System;
 using DigitalSignService.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DigitalSignService.DAL.Migrations
 {
     [DbContext(typeof(DataBaseContext))]
-    partial class DataBaseContextModelSnapshot : ModelSnapshot
+    [Migration("20251014111656_addcol-templatepagerusersign")]
+    partial class addcoltemplatepagerusersign
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -247,11 +250,6 @@ namespace DigitalSignService.DAL.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("template_id");
 
-                    b.Property<string>("TemplateUrl")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("template_url");
-
                     b.Property<DateTime?>("UpdatedDateTime")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_dateTime");
@@ -336,7 +334,7 @@ namespace DigitalSignService.DAL.Migrations
             modelBuilder.Entity("DigitalSignService.DAL.Entities.HistorySign", b =>
                 {
                     b.HasOne("DigitalSignService.DAL.Entities.Template", "Template")
-                        .WithMany("HistorySigns")
+                        .WithMany()
                         .HasForeignKey("TemplateId");
 
                     b.Navigation("Template");
@@ -379,8 +377,6 @@ namespace DigitalSignService.DAL.Migrations
 
             modelBuilder.Entity("DigitalSignService.DAL.Entities.Template", b =>
                 {
-                    b.Navigation("HistorySigns");
-
                     b.Navigation("TemplatePapers");
                 });
 
