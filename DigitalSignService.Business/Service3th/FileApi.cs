@@ -1,4 +1,3 @@
-using DigitalSignService.Business.Service3th;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -6,7 +5,7 @@ namespace DigitalSignService.Business.Service3th
 {
     public class FileApi : HttpService
     {
-        public FileApi(IHttpContextAccessor httpContextAccessor, ILogger<FileApi> logger) 
+        public FileApi(IHttpContextAccessor httpContextAccessor, ILogger<FileApi> logger)
             : base(httpContextAccessor, logger, string.Empty)
         {
         }
@@ -22,7 +21,7 @@ namespace DigitalSignService.Business.Service3th
         {
             try
             {
-                using var response = await HeadAsync(url, token, customHeaders);
+                using var response = await HeadAsync(url, token, customHeaders, false);
                 if (response?.IsSuccessStatusCode == true)
                 {
                     // Thử lấy Content-Length header

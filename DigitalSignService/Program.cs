@@ -134,15 +134,16 @@ builder.Services.Configure<DigitalSignSettings>(digitalSignSettings);
 builder.Services.AddSingleton<IMemoryCache, MemoryCache>();
 builder.Services.AddSingleton<CachingService>();
 builder.Services.AddTransient<ViettelSignApi>();
+builder.Services.AddTransient<WebhookApi>();
+builder.Services.AddTransient<FileApi>();
 builder.Services.AddTransient<ITemplateService, TemplateService>();
 builder.Services.AddTransient<ISigningProvider, ViettelSigningProvider>();
 builder.Services.AddTransient<ISigningProvider, VnptSigningProvider>();
-builder.Services.AddScoped<IPaperSizeService, PaperSizeService>();
+builder.Services.AddTransient<IPaperSizeService, PaperSizeService>();
 builder.Services.AddTransient<IApiStorage, ApiStorage>();
 builder.Services.AddTransient<IJWTContext, JWTContext>();
 builder.Services.AddSingleton<RedisService>();
 builder.Services.AddHostedService<WebhookService>();
-builder.Services.AddScoped<FileApi>();
 
 // Register provider factory
 builder.Services.AddSingleton<ISigningProviderFactory, SigningProviderFactory>();

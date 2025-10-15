@@ -28,6 +28,13 @@ namespace DigitalSignService.DAL.Entities
         [Required]
         public Guid PaperSizeId { get; set; }
 
+        /// <summary>
+        /// Template url 
+        /// </summary>
+        [DataMember]
+        [Column("template_url")]
+        public string TemplateUrl { get; set; }
+
         public virtual Template Template { get; set; }
 
         public virtual PaperSize PaperSize { get; set; }

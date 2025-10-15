@@ -25,6 +25,8 @@ namespace DigitalSignService.Business.Services
         private readonly IHistorySignRepository _historySignRP;
         private readonly FileApi _fileApi;
         private readonly CachingService _cachingService;
+        private readonly WebhookApi _webhookApi;
+        private readonly IPaperSizeRepository _paperSizeRP;
         public TemplateService(
             ITemplateRepository rp,
             IOptions<AppSetting> options,
@@ -33,7 +35,9 @@ namespace DigitalSignService.Business.Services
             ISigningProviderFactory signingProviderFactory,
             IHistorySignRepository historySignRP,
             FileApi fileApi,
-            CachingService cachingService) : base(rp, logger)
+            CachingService cachingService,
+            WebhookApi webhookApi,
+            IPaperSizeRepository paperSizeRP) : base(rp, logger)
         {
             this._rp = rp;
             _appSetting = options.Value;
@@ -42,6 +46,8 @@ namespace DigitalSignService.Business.Services
             _historySignRP = historySignRP;
             _fileApi = fileApi;
             _cachingService = cachingService;
+            _webhookApi = webhookApi;
+            _paperSizeRP = paperSizeRP;
         }
 
         /// <summary>
@@ -67,7 +73,7 @@ namespace DigitalSignService.Business.Services
                 if (!_cachingService.CanAddToCache(fileSize, _appSetting.MaxStorageSigner))
                 {
                     var currentCacheSize = _cachingService.GetAllSignerCacheSize();
-                    logger.LogWarning("Cannot process document due to cache storage limit. File size: {FileSize}, Current cache: {CurrentCache}, Max allowed: {MaxStorage}", 
+                    logger.LogWarning("Cannot process document due to cache storage limit. File size: {FileSize}, Current cache: {CurrentCache}, Max allowed: {MaxStorage}",
                         fileSize, currentCacheSize, _appSetting.MaxStorageSigner);
                     return BadRequestResponse($"Cannot process document due to storage limit. File size: {fileSize / (1024 * 1024):F2}MB. Server can handle file with size {(_appSetting.MaxStorageSigner - currentCacheSize) / (1024 * 1024):F2}MB currently.");
                 }
@@ -151,7 +157,7 @@ namespace DigitalSignService.Business.Services
                 };
                 var _signingProvider = _signingProviderFactory.GetProvider(providerSign);
                 var statusRes = await _signingProvider.GetSignStatus(signReq, existingHistorySign.TransactionId, cancellationToken);
-                
+
                 existingHistorySign.SigningStatus = statusRes.SigningStatus;
                 existingHistorySign.DocumentSignedUrl = statusRes.DocumentUrl;
 
@@ -176,16 +182,31 @@ namespace DigitalSignService.Business.Services
                 {
                     return BadRequestResponse("Exist name template");
                 }
+
+                var paperIds = request.TemplatePapers.Select(x => x.PaperId).ToList().Distinct();
+                var existPaperIds = await _paperSizeRP.Queryable()
+                    .Where(p => paperIds.Contains(p.Id) && (p.PaperSizeType != Enums.PaperSizeType.Custom || p.CreatedUserId == _rp.UserInfo.Id))
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                var notExistPaperIds = paperIds.Except(existPaperIds).ToList();
+                if (notExistPaperIds.Any())
+                {
+                    return BadRequestResponse($"Some page size does not exist: {String.Join(", ", notExistPaperIds)}");
+                }
+
                 var template = new Template
                 {
                     Name = request.Name,
                     TemplatePapers = request.TemplatePapers.Select(p => new DigitalSignService.DAL.Entities.TemplatePaper
                     {
                         PaperSizeId = p.PaperId,
+                        TemplateUrl = p.TemplateUrl,
                         TemplatePaperUserSigns = p.TemplateUserSigns.Select(u => new DigitalSignService.DAL.Entities.TemplatePaperUserSign
                         {
                             UserSignId = u.UserSignId,
                             Img = u.Img,
+                            Rotate = u.Rotate,
                             Priority = u.Priority,
                             UserSignPositions = u.UserSignPos.Select(pos => new UserSignPos
                             {
@@ -269,13 +290,27 @@ namespace DigitalSignService.Business.Services
                     return BadRequestResponse("Name template exist");
                 }
 
+                var paperIds = request.TemplatePapers.Select(x => x.PaperId).ToList().Distinct();
+                var existPaperIds = await _paperSizeRP.Queryable()
+                    .Where(p => paperIds.Contains(p.Id) && (p.PaperSizeType != Enums.PaperSizeType.Custom || p.CreatedUserId == _rp.UserInfo.Id))
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                var notExistPaperIds = paperIds.Except(existPaperIds).ToList();
+                if (notExistPaperIds.Any())
+                {
+                    return BadRequestResponse($"Some page size does not exist: {String.Join(", ", notExistPaperIds)}");
+                }
+
                 var updateTemplatePapers = request.TemplatePapers.Select(p => new DigitalSignService.DAL.Entities.TemplatePaper
                 {
                     PaperSizeId = p.PaperId,
+                    TemplateUrl = p.TemplateUrl,
                     TemplatePaperUserSigns = p.TemplateUserSigns.Select(u => new DigitalSignService.DAL.Entities.TemplatePaperUserSign
                     {
                         UserSignId = u.UserSignId,
                         Img = u.Img,
+                        Rotate = u.Rotate,
                         Priority = u.Priority,
                         UserSignPositions = u.UserSignPos.Select(pos => new UserSignPos
                         {
@@ -356,10 +391,52 @@ namespace DigitalSignService.Business.Services
 
                 await _historySignRP.UpdateWithoutTracking(existingHistorySign);
                 await _historySignRP.Save();
+
+                if (existingHistorySign.CreatedUserId.HasValue)
+                    await _webhookApi.PushMessage(new PushMessReq
+                    {
+                        EventType = "",
+                        Data = new
+                        {
+                            transactionId = existingHistorySign.Id,
+                            status = existingHistorySign.SigningStatus,
+                            documentSignedUrl = existingHistorySign.DocumentSignedUrl
+                        },
+                        SubscriberIds = new List<Guid> { existingHistorySign.CreatedUserId.Value }
+                    });
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, $"Error when HandleWebhook of provider {providerSign}");
+            }
+        }
+
+        public async Task<BaseResponse> DeleteTemplate(Guid id)
+        {
+            try
+            {
+                var existTemplate = await _rp.FindWithIncludesAsync(tp => tp.Id == id
+                            && tp.IsActive
+                            && !tp.IsDeleted
+                            && tp.CreatedUserId == _rp.UserInfo.Id, query => query.Include(tp => tp.HistorySigns));
+                if (existTemplate == null)
+                {
+                    return BadRequestResponse("Template does not exist");
+                }
+                if (existTemplate.HistorySigns is not null && existTemplate.HistorySigns.Any())
+                {
+                    return BadRequestResponse("Cannot delete template because it is being used for sign history");
+                }
+
+                await _rp.SoftDelete(existTemplate.Id);
+                await _rp.Save();
+
+                return SuccessResponse("Delete template succesfully");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex.Message);
+                return CatchErrorResponse(ex);
             }
         }
 

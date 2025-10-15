@@ -16,6 +16,7 @@ namespace DigitalSignService.DAL.DTOs.Requests
         public UserSignPos[] UserSignPositions { get; set; }
         public string Reason { get; set; }
         public string? SerialNumber { get; set; }
+        public int? Rotate { get; set; }
     }
 
     public class DocumentInfo

@@ -14,5 +14,6 @@ namespace DigitalSignService.Business.IServices
         Task<BaseResponse> UpdateTemplate(UpdateTemplateRequest request);
         Task<BaseResponse> GetFileSigned(string transactionId, string providerSign, CancellationToken cancellationToken = default);
         Task HandleWebhook(string providerSign, string dataString, CancellationToken cancellationToken = default);
+        Task<BaseResponse> DeleteTemplate(Guid id);
     }
 }

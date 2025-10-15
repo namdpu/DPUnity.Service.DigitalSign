@@ -24,7 +24,7 @@
     {
         public string Login { get; set; }
     }
-    
+
     public class WebHookAPI : BaseAPI
     {
         public string PushMessage { get; set; }
