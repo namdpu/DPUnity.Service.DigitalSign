@@ -307,13 +307,13 @@ namespace DigitalSignService.Business.Services.Sign
                 switch (rotate)
                 {
                     case 90:
-                        rotateType = System.Drawing.RotateFlipType.Rotate90FlipNone;
+                        rotateType = System.Drawing.RotateFlipType.Rotate90FlipXY;
                         break;
                     case 180:
-                        rotateType = System.Drawing.RotateFlipType.Rotate180FlipNone;
+                        rotateType = System.Drawing.RotateFlipType.Rotate180FlipXY;
                         break;
                     case 270:
-                        rotateType = System.Drawing.RotateFlipType.Rotate270FlipNone;
+                        rotateType = System.Drawing.RotateFlipType.Rotate270FlipXY;
                         break;
                 }
 
