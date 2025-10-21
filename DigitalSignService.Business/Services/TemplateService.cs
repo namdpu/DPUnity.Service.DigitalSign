@@ -66,7 +66,7 @@ namespace DigitalSignService.Business.Services
                 var fileSize = await _fileApi.GetFileSizeAsync(req.DocumentInfo.Url);
                 if (fileSize == -1)
                 {
-                    logger.LogError("Cannot get file size from document URL (use method HEAD to get file size): {DocumentUrl}", req.DocumentInfo.Url);
+                    logger.LogError("Cannot get file size from document URL (use method HEAD to get file size or method GET with header RANGE): {DocumentUrl}", req.DocumentInfo.Url);
                     return BadRequestResponse("Cannot retrieve file information. Please check the document URL (use method HEAD to get file size).");
                 }
 
