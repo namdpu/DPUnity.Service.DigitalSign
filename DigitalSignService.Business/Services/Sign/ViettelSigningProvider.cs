@@ -218,6 +218,9 @@ namespace DigitalSignService.Business.Services.Sign
             var lastCert = certMap.Last();
             if (!String.IsNullOrEmpty(req.SerialNumber))
                 lastCert = certMap.FirstOrDefault(c => c.Value.SerialNumber != null && c.Value.SerialNumber.Equals(req.SerialNumber, StringComparison.OrdinalIgnoreCase));
+            if(lastCert.Key is null)
+                throw new Exception("Cannot find certificate with given serial number");
+
             string credentialId = lastCert.Key;
             string x509Cert = lastCert.Value.Certificates.FirstOrDefault()!;
 
