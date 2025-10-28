@@ -1,4 +1,3 @@
-
 using DigitalSignService.Business.IServices;
 using DigitalSignService.Business.IServices.Sign;
 using DigitalSignService.Business.Service3th;
@@ -136,10 +135,10 @@ builder.Services.AddSingleton<CachingService>();
 builder.Services.AddTransient<ViettelSignApi>();
 builder.Services.AddTransient<WebhookApi>();
 builder.Services.AddTransient<FileApi>();
-builder.Services.AddTransient<ITemplateService, TemplateService>();
+builder.Services.AddScoped<ITemplateService, TemplateService>();
+builder.Services.AddScoped<IPaperSizeService, PaperSizeService>();
 builder.Services.AddTransient<ISigningProvider, ViettelSigningProvider>();
 builder.Services.AddTransient<ISigningProvider, VnptSigningProvider>();
-builder.Services.AddTransient<IPaperSizeService, PaperSizeService>();
 builder.Services.AddTransient<IApiStorage, ApiStorage>();
 builder.Services.AddTransient<IJWTContext, JWTContext>();
 builder.Services.AddSingleton<RedisService>();

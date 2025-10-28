@@ -3,11 +3,13 @@ using DigitalSignService.DAL.DTOs.Requests;
 using DigitalSignService.DAL.DTOs.Responses;
 using DigitalSignService.DAL.Models;
 using DPUStorageService.APIs;
+using iTextSharp.text.pdf;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Processing;
 using System.Runtime.InteropServices;
+using static iTextSharp.text.pdf.security.CertificateInfo;
 
 namespace DigitalSignService.Business.Services.Sign
 {
@@ -189,7 +191,7 @@ namespace DigitalSignService.Business.Services.Sign
             try
             {
                 const int maxRetries = 3;
-                Exception lastException = null;
+                Exception? lastException = null;
 
                 for (int retry = 0; retry < maxRetries; retry++)
                 {
@@ -283,6 +285,18 @@ namespace DigitalSignService.Business.Services.Sign
             return memoryStream.ToArray();
         }
 
+        /// <summary>
+        /// Public method to download file - can be used by derived classes
+        /// </summary>
+        /// <param name="url">File URL to download</param>
+        /// <param name="maxConcurrentDownloads">Maximum concurrent downloads (default: 5)</param>
+        /// <param name="partSizeBytes">Part size in bytes (default: 1MB)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Stream containing file content</returns>
+        protected async Task<Stream?> DownloadFileStreamAsync(string url, int maxConcurrentDownloads = 5,
+            long partSizeBytes = 5 * 1024 * 1024, CancellationToken cancellationToken = default)
+            => await DownloadFile(url, maxConcurrentDownloads, partSizeBytes, cancellationToken);
+
         public virtual Task<string> SignCAPDF(SignReq req, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
@@ -341,6 +355,123 @@ namespace DigitalSignService.Business.Services.Sign
                 image.Save(output, new PngEncoder());
                 return output.ToArray();
             }
+        }
+
+        public virtual async Task<List<SignatureValidationResult>> VerifyPdf(string url, CancellationToken cancellationToken = default)
+        {
+            var pdfStream = await this.DownloadFileStreamAsync(url, cancellationToken: cancellationToken);
+            if (pdfStream == null)
+            {
+                throw new Exception("Could not download PDF file from the provided URL.");
+            }
+
+            var validationResults = new List<SignatureValidationResult>();
+            pdfStream.Position = 0;
+
+            PdfReader? pdfReader = null;
+            try
+            {
+                pdfReader = new PdfReader(pdfStream);
+                var acroFields = pdfReader.AcroFields;
+                var signatureNames = acroFields.GetSignatureNames();
+
+                foreach (var name in signatureNames)
+                {
+                    var result = new SignatureValidationResult { SignatureName = name };
+                    var pkcs7 = acroFields.VerifySignature(name);
+
+                    if (pkcs7 == null)
+                    {
+                        result.ValidationIssues.Add("Could not read signature data.");
+                        validationResults.Add(result);
+                        continue;
+                    }
+
+                    // 1. Verify the integrity of the document
+                    result.IsDocumentIntact = pkcs7.Verify();
+                    if (!result.IsDocumentIntact)
+                    {
+                        result.ValidationIssues.Add("The document has been modified or corrupted since it was signed.");
+                    }
+
+                    // 2. Verify the certificate's validity
+                    Org.BouncyCastle.X509.X509Certificate cert = pkcs7.SigningCertificate;
+                    if (cert == null)
+                    {
+                        result.ValidationIssues.Add("Could not find signing certificate.");
+                        validationResults.Add(result);
+                        continue;
+                    }
+                    try
+                    {
+                        // Check if the certificate was valid at the time of signing
+                        cert.CheckValidity(pkcs7.SignDate);
+                        result.IsSignatureValid = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        result.IsSignatureValid = false;
+                        result.ValidationIssues.Add($"Certificate is not valid: {ex.Message}");
+                    }
+
+                    // 3. Extract signer details from the certificate
+                    var subject = cert.SubjectDN;
+                    result.SignerDetails = new SignerInfo
+                    {
+                        CommonName = GetCertificateValue(subject, X509Name.CN),
+                        Organization = GetCertificateValue(subject, X509Name.O),
+                        OrganizationalUnit = GetCertificateValue(subject, X509Name.OU),
+                        Country = GetCertificateValue(subject, X509Name.C),
+                    };
+
+                    // 4. Extract other signature metadata
+                    result.SigningTime = pkcs7.SignDate;
+                    result.SigningReason = pkcs7.Reason;
+                    result.SigningLocation = pkcs7.Location;
+
+                    // 5. Get the signature's position on the page
+                    var position = acroFields.GetFieldPositions(name);
+                    if (position != null && position.Count > 0)
+                    {
+                        var pos = position[0];
+                        if (pos != null)
+                        {
+                            result.Position = new SignaturePositionInfo
+                            {
+                                PageNumber = pos.page,
+                                X = pos.position.Left,
+                                Y = pos.position.Bottom,
+                                Width = pos.position.Width,
+                                Height = pos.position.Height
+                            };
+                        }
+                    }
+
+                    validationResults.Add(result);
+                }
+            }
+            finally
+            {
+                pdfReader?.Close();
+            }
+
+            return validationResults;
+        }
+
+        private string GetCertificateValue(Org.BouncyCastle.Asn1.X509.X509Name subject, Org.BouncyCastle.Asn1.DerObjectIdentifier identifier)
+        {
+            if (subject == null)
+            {
+                return "N/A";
+            }
+            var values = subject.GetValueList(identifier);
+            if (values != null && values.Count > 0)
+            {
+                var value = values[0];
+                return value?.ToString() ?? "N/A";
+            }
+
+            return "N/A";
         }
     }
 }
