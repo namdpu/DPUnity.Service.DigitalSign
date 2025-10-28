@@ -9,5 +9,6 @@ namespace DigitalSignService.Business.IServices.Sign
         Task<string> SignCAPDF(SignReq req, CancellationToken cancellationToken = default);
         Task<SignStatusDTO> GetSignStatus(SignReq req, string transactionId, CancellationToken cancellationToken = default);
         Task<SignStatusDTO> HandleWebhook(string dataString, string documentName, CancellationToken cancellationToken);
+        Task<List<SignatureValidationResult>> VerifyPdf(string url, CancellationToken cancellationToken = default);
     }
 }

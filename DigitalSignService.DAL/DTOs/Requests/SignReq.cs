@@ -7,6 +7,7 @@ namespace DigitalSignService.DAL.DTOs.Requests
         public Guid? TemplateId { get; set; }
         public UserSignReq UserSign { get; set; }
         public DocumentInfo DocumentInfo { get; set; }
+        public string? Location { get; set; }
     }
 
     public class UserSignReq

@@ -81,12 +81,12 @@ namespace DigitalSignService.Business.Service3th
                 var client = CreateHttpClient(token, customHeaders, false);
 
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                
+
                 // Thêm Range header để chỉ lấy byte đầu tiên
                 request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
 
                 using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-                
+
                 if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.PartialContent)
                 {
                     // Với Range request, server thường trả về Content-Range header

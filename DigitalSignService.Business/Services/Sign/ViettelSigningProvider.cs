@@ -72,6 +72,11 @@ namespace DigitalSignService.Business.Services.Sign
             }
         }
 
+        public override async Task<List<SignatureValidationResult>> VerifyPdf(string url, CancellationToken cancellationToken = default)
+        {
+            return await base.VerifyPdf(url);
+        }
+
         private async Task<SignStatusDTO> GetSignStatus(SignReq req, string clientId, string clientSecret, string profileId, string transactionId, CancellationToken cancellationToken = default)
         {
             var token = await this.Login(req.UserSign.Id, clientId, clientSecret, profileId);
@@ -181,7 +186,7 @@ namespace DigitalSignService.Business.Services.Sign
                 return string.Empty;
             }
 
-            var signerTmp = await this.Signer(req.UserSign, clientId, clientSecret, profileId, file, token.AccessToken);
+            var signerTmp = await this.Signer(req.UserSign, clientId, clientSecret, profileId, file, token.AccessToken, req.Location);
             var signer = signerTmp?.Item1;
             var credentialId = signerTmp?.Item2;
             if (signer == null || String.IsNullOrEmpty(credentialId))
@@ -207,7 +212,7 @@ namespace DigitalSignService.Business.Services.Sign
             return transactionId;
         }
 
-        private async Task<(IHashSigner, string)?> Signer(UserSignReq req, string clientId, string clientSecret, string profileId, byte[] file, string accessToken)
+        private async Task<(IHashSigner, string)?> Signer(UserSignReq req, string clientId, string clientSecret, string profileId, byte[] file, string accessToken, string location = "Location")
         {
             var certMap = await this.GetAllCertificates(req.Id, clientId, clientSecret, profileId, accessToken);
             if (certMap == null || certMap.Count == 0)
@@ -218,7 +223,7 @@ namespace DigitalSignService.Business.Services.Sign
             var lastCert = certMap.Last();
             if (!String.IsNullOrEmpty(req.SerialNumber))
                 lastCert = certMap.FirstOrDefault(c => c.Value.SerialNumber != null && c.Value.SerialNumber.Equals(req.SerialNumber, StringComparison.OrdinalIgnoreCase));
-            if(lastCert.Key is null)
+            if (lastCert.Key is null)
                 throw new Exception("Cannot find certificate with given serial number");
 
             string credentialId = lastCert.Key;
@@ -247,6 +252,8 @@ namespace DigitalSignService.Business.Services.Sign
             }
 
             ((PdfHashSigner)signer).SetCustomImage(imgStream);
+            // Property: set location
+            ((PdfHashSigner)signer).SetLocation(location);
 
             foreach (var item in req.UserSignPositions)
             {

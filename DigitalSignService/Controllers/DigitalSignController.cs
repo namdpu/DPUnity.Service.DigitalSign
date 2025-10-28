@@ -68,6 +68,17 @@ namespace DigitalSignService.Controllers
         public async Task<BaseResponse> GetFileSigned(string transactionId, CancellationToken cancellationToken)
             => await _templateService.GetFileSigned(transactionId, _providerSign, cancellationToken);
 
+        [SwaggerOperation("Verify PDF Signatures")]
+        [HttpPost]
+        public async Task<IActionResult> VerifyPdfSignatures(VerifySignatureRequest request, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            return Ok(await _templateService.VerifySignaturesAsync(request, _providerSign, cancellationToken));
+        }
+
         [SwaggerOperation("Delete Template")]
         [HttpDelete]
         public async Task<BaseResponse> DeleteTemplate(Guid id)

@@ -71,15 +71,18 @@ namespace DigitalSignService.Controllers
                 case 200:
                     {
                         return SuccessResponse(response);
-                    };
+                    }
+                    ;
                 case 400:
                     {
                         return BadRequestResponse(response);
-                    };
+                    }
+                    ;
                 case 404:
                     {
                         return NotFoundResponse(response);
-                    };
+                    }
+                    ;
                 default: return null;
             }
         }

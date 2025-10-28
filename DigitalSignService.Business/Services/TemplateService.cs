@@ -455,5 +455,21 @@ namespace DigitalSignService.Business.Services
                 throw;
             }
         }
+
+        public async Task<BaseResponse> VerifySignaturesAsync(VerifySignatureRequest request, string providerSign, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var _signingProvider = _signingProviderFactory.GetProvider(providerSign);
+                var validationResults = await _signingProvider.VerifyPdf(request.Url!, cancellationToken);
+
+                return SuccessResponse(validationResults);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error when VerifySignaturesAsync");
+                return CatchErrorResponse(ex);
+            }
+        }
     }
 }

@@ -21,6 +21,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Reference Include="BouncyCastle.Crypto">
+		  <HintPath>..\..\DigitalSignService\DigitalSignService.Business\Lib\BouncyCastle.Crypto.dll</HintPath>
+		</Reference>
+		<Reference Include="itextsharp">
+		  <HintPath>..\..\DigitalSignService\DigitalSignService.Business\Lib\itextsharp.dll</HintPath>
+		</Reference>
 		<Reference Include="SignService.Common.HashSignature">
 			<HintPath>$(MSBuildProjectDirectory)$(DirectorySeparatorChar)Lib$(DirectorySeparatorChar)SignService.Common.HashSignature.dll</HintPath>
 			<Private>true</Private>
